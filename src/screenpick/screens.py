@@ -104,6 +104,24 @@ def window_info(screen_bin: str, session_id: str, attempts: int = 2) -> WindowIn
     return None
 
 
+def check_session_name(name: str) -> str | None:
+    """screen 세션 이름으로 쓸 수 없으면 이유를, 괜찮으면 None."""
+    if any(c.isspace() for c in name):
+        return "세션 이름에 공백을 쓸 수 없습니다."
+    if any(c in name for c in "./:"):
+        return "세션 이름에 . / : 는 쓸 수 없습니다."
+    if not all(c.isprintable() for c in name):
+        return "세션 이름에 제어 문자를 쓸 수 없습니다."
+    if len(name.encode()) > 80:
+        return "세션 이름이 너무 깁니다."
+    return None
+
+
+def new_session_args(screen_bin: str, name: str = "") -> list[str]:
+    """새 세션을 만들고 바로 붙는 명령. 이름이 없으면 screen 이 정한다."""
+    return [screen_bin, "-S", name] if name else [screen_bin]
+
+
 def attach_args(screen_bin: str, session: Session, attached_mode: str) -> list[str]:
     if session.attached:
         flag = ["-x"] if attached_mode == "share" else ["-d", "-r"]

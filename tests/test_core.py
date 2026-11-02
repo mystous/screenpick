@@ -168,3 +168,13 @@ def test_render_survives_overwritten_wide_char():
     stream.feed("\x1b[1;2Hx")  # '한' 의 오른쪽 절반을 덮어씀
     lines = render(screen)
     assert lines[0].endswith("글abc")
+
+
+def test_session_name_rules():
+    assert screens.check_session_name("work") is None
+    assert screens.check_session_name("작업-1") is None
+    assert screens.check_session_name("a b")
+    assert screens.check_session_name("a.b")
+    assert screens.check_session_name("a/b")
+    assert screens.new_session_args("screen", "work") == ["screen", "-S", "work"]
+    assert screens.new_session_args("screen", "") == ["screen"]

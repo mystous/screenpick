@@ -93,13 +93,15 @@ def main(argv: list[str] | None = None) -> int:
 
     from . import tui  # curses 는 대화형 모드에서만 필요
     try:
-        exec_args = tui.run(cfg)
+        exec_args, exec_env = tui.run(cfg)
     except KeyboardInterrupt:
-        exec_args = None
+        exec_args, exec_env = None, None
     finally:
         buffer.flush_to(sys.stderr)
 
     if exec_args:
+        if exec_env is not None:
+            os.execvpe(exec_args[0], exec_args, exec_env)
         os.execvp(exec_args[0], exec_args)
     return 0
 

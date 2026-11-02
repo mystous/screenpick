@@ -5,6 +5,7 @@ from __future__ import annotations
 import curses
 import logging
 import os
+import subprocess
 import threading
 import time
 from dataclasses import dataclass
@@ -145,6 +146,7 @@ class App:
         self.my_sty = os.environ.get("STY", "")
         self.refresher = Refresher(cfg, self._visible_ids)
         self.attach_request: list[str] | None = None
+        self.attach_env: dict[str, str] | None = None
 
     # ---- 상태
     def _visible_ids(self, views) -> list[str]:
@@ -273,6 +275,7 @@ class App:
             self.put(H // 2, max(0, W // 2 - 10), "세션 목록 불러오는 중…")
         elif not views:
             self.put(H // 2, max(0, W // 2 - 15), "실행 중인 screen 세션이 없습니다")
+            self.put(H // 2 + 1, max(0, W // 2 - 15), "c 를 눌러 새 세션을 만드세요", curses.A_DIM)
         else:
             start = page * per
             for i, view in enumerate(views[start:start + per]):
@@ -290,7 +293,7 @@ class App:
             foot = " " + self.message
         else:
             self.message = ""
-            foot = " ←↑↓→/hjkl 이동  Enter 붙기  1-9 바로 붙기  n/p 페이지  r 새로고침  ? 도움말  q 종료"
+            foot = " ←↑↓→/hjkl 이동  Enter 붙기  1-9 바로 붙기  c 새 세션  n/p 페이지  r 새로고침  ? 도움말  q 종료"
         self.put(H - 1, 0, pad(foot, W), curses.A_REVERSE)
         self.scr.noutrefresh()
         curses.doupdate()
@@ -305,6 +308,7 @@ class App:
             "n PgDn ]         다음 페이지",
             "p PgUp [         이전 페이지",
             "g Home / G End   처음 / 마지막 세션",
+            "c                새 screen 세션 만들기 (이름 입력)",
             "r                지금 새로고침",
             "마우스           클릭 선택, 더블클릭 붙기",
             "q Esc            종료",
@@ -379,21 +383,86 @@ class App:
             self.flash("지금 screenpick 이 돌고 있는 바로 그 세션입니다.")
             return False
         args = screens.attach_args(self.cfg.screen_bin, view.session, self.cfg.attached_mode)
+        return self.run_screen(args, f"{view.session.id} 에서 돌아왔습니다.")
+
+    def run_screen(self, args: list[str], back_message: str, env: dict[str, str] | None = None) -> bool:
+        """screen 을 전경에서 실행하고, detach 하면 그리드로 돌아온다. True 면 앱 종료."""
         if not self.cfg.return_after_detach:
             self.attach_request = args
+            self.attach_env = env
             return True
         self.refresher.pause()
         curses.def_prog_mode()
         curses.endwin()
         try:
-            import subprocess
-            subprocess.run(args)
+            subprocess.run(args, env=env)
         finally:
             curses.reset_prog_mode()
             self.scr.clear()
             self.refresher.resume()
-        self.flash(f"{view.session.id} 에서 돌아왔습니다.")
+        self.flash(back_message)
         return False
+
+    def new_session(self) -> bool:
+        name = self.prompt("새 세션 이름 (비우면 자동 · Enter 만들기 · Esc 취소): ")
+        if name is None:
+            return False
+        name = name.strip()
+        if name:
+            problem = screens.check_session_name(name)
+            if problem:
+                self.flash(problem)
+                return False
+            if any(v.session.name == name for v in self.current_views()):
+                self.flash(f"'{name}' 이름의 세션이 이미 있습니다.")
+                return False
+        args = screens.new_session_args(self.cfg.screen_bin, name)
+        # screen 안에서 STY 가 남아 있으면 새 세션 대신 현재 세션에 창이 하나 생긴다
+        env = {k: v for k, v in os.environ.items() if k not in ("STY", "WINDOW")}
+        done = self.run_screen(args, f"새 세션{' ' + name if name else ''} 에서 돌아왔습니다.", env)
+        self.sel = 0  # 새 세션은 가장 최근이라 맨 앞에 온다
+        return done
+
+    def prompt(self, label: str) -> str | None:
+        """꼬리줄에서 한 줄 입력받기. Esc 면 None. 한글 입력을 위해 get_wch 를 쓴다."""
+        buf: list[str] = []
+        self.scr.timeout(-1)
+        try:
+            curses.curs_set(1)
+        except curses.error:
+            pass
+        try:
+            while True:
+                H, W = self.scr.getmaxyx()
+                text = label + "".join(buf)
+                shown = text if width(text) < W - 1 else "…" + text[-(W // 2):]
+                self.put(H - 1, 0, pad(" " + shown, W), curses.A_REVERSE)
+                try:
+                    self.scr.move(H - 1, min(W - 2, 1 + width(shown)))
+                except curses.error:
+                    pass
+                self.scr.refresh()
+                try:
+                    ch = self.scr.get_wch()
+                except curses.error:
+                    continue
+                if ch in ("\n", "\r", curses.KEY_ENTER):
+                    return "".join(buf)
+                if ch == "\x1b":
+                    return None
+                if ch in ("\x7f", "\b", curses.KEY_BACKSPACE):
+                    if buf:
+                        buf.pop()
+                elif ch == "\x15":  # Ctrl-U: 전부 지우기
+                    buf.clear()
+                elif isinstance(ch, str) and ch.isprintable():
+                    buf.append(ch)
+        finally:
+            try:
+                curses.curs_set(0)
+            except curses.error:
+                pass
+            self.scr.timeout(150)
 
     def on_mouse(self) -> bool:
         try:
@@ -437,6 +506,8 @@ class App:
             if idx < len(self.current_views()) and key - ord("1") < per:
                 self.sel = idx
                 return self.attach(idx)
+        elif key == ord("c"):
+            return self.new_session()
         elif key == ord("r"):
             self.flash("새로고침…", 1.0)
             self.refresher.request()
@@ -448,7 +519,7 @@ class App:
             self.refresher.request()  # 한 페이지에 들어가는 개수가 바뀔 수 있음
         return False
 
-    def run(self) -> list[str] | None:
+    def run(self) -> tuple[list[str] | None, dict[str, str] | None]:
         curses.curs_set(0)
         self.scr.keypad(True)
         curses.set_escdelay(25)
@@ -472,9 +543,9 @@ class App:
                 self.draw()
         finally:
             self.refresher.stop()
-        return self.attach_request
+        return self.attach_request, self.attach_env
 
 
-def run(cfg: Config) -> list[str] | None:
-    """앱을 실행하고, 끝날 때 exec 할 screen 명령(있다면)을 돌려준다."""
+def run(cfg: Config) -> tuple[list[str] | None, dict[str, str] | None]:
+    """앱을 실행하고, 끝날 때 exec 할 screen 명령과 환경(있다면)을 돌려준다."""
     return curses.wrapper(lambda stdscr: App(stdscr, cfg).run())
