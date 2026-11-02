@@ -1,0 +1,46 @@
+[project]
+name = "screenpick"
+version = "0.1.0"
+description = "GNU screen 세션들을 썸네일 그리드로 한눈에 보고 골라서 붙는 TUI"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Kyunam Cho" },
+    { name = "Claude (Anthropic)" },
+]
+keywords = ["screen", "gnu-screen", "terminal", "tui", "curses", "claude", "codex"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console :: Curses",
+    "Intended Audience :: Developers",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Topic :: Terminals",
+    "Topic :: Utilities",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "pyte>=0.8.2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.urls]
+Homepage = "https://github.com/mystous/screenpick"
+Issues = "https://github.com/mystous/screenpick/issues"
+
+[project.scripts]
+screenpick = "screenpick.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/screenpick"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
