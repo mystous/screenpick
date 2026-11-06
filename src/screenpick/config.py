@@ -25,6 +25,7 @@ class Config:
     attached_mode: str       # 다른 곳에 붙어 있는 세션: steal(-d -r) | share(-x)
     return_after_detach: bool  # 세션에서 detach 하면 목록으로 돌아올지
     single_instance: bool    # 새로 켜면 이전 screenpick 을 종료할지
+    safe_symbols: bool       # 터미널마다 폭이 다른 기호를 바꿔 그릴지 (테두리 밀림 방지)
     claude_dir: Path
     codex_dir: Path
     log_level: str
@@ -81,6 +82,7 @@ def load(env: Mapping[str, str] | None = None) -> Config:
         attached_mode=_choice(env, "ATTACHED_MODE", "steal", ("steal", "share")),
         return_after_detach=_bool(env, "RETURN_AFTER_DETACH", True),
         single_instance=_bool(env, "SINGLE_INSTANCE", True),
+        safe_symbols=_bool(env, "SAFE_SYMBOLS", True),
         claude_dir=claude_dir.expanduser(),
         codex_dir=codex_dir.expanduser(),
         log_level=(env.get(PREFIX + "LOG_LEVEL") or "WARNING").upper(),

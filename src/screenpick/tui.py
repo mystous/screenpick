@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 from . import __version__, model, screens
 from .config import Config
-from .textwidth import crop, pad, truncate, width
+from .textwidth import crop, pad, safe_symbols, truncate, width
 
 log = logging.getLogger(__name__)
 
@@ -188,6 +188,8 @@ class App:
         if y < 0 or y >= h or x >= w:
             return
         text = crop(text, w - x - (1 if y == h - 1 else 0))  # 오른쪽 아래 칸에 쓰면 curses 오류
+        if self.cfg.safe_symbols:
+            text = safe_symbols(text)
         try:
             self.scr.addstr(y, x, text, attr)
         except curses.error:

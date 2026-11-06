@@ -224,3 +224,12 @@ def test_screen_children(tmp_path):
         d.mkdir()
         (d / "stat").write_text(f"{pid} ({comm}) S {ppid} {pid} {pid} 0 -1 0")
     assert instance.screen_children(10, tmp_path) == [20]
+
+
+def test_safe_symbols_keeps_width():
+    from screenpick.textwidth import safe_symbols
+    src = "⎿ Read 한글 ✔ — ● ❯ ① ⚠ │━┃ abc"
+    out = safe_symbols(src)
+    assert out == "└ Read 한글 v - * > · ! │━┃ abc"
+    assert width(out) == width(src)
+    assert safe_symbols("plain") == "plain"
