@@ -1,6 +1,6 @@
 [project]
 name = "screenpick"
-version = "0.1.0"
+dynamic = ["version"]
 description = "GNU screen 세션들을 썸네일 그리드로 한눈에 보고 골라서 붙는 TUI"
 readme = "README.md"
 license = "MIT"
@@ -37,6 +37,9 @@ screenpick = "screenpick.cli:main"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "src/screenpick/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/screenpick"]

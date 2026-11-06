@@ -10,7 +10,7 @@ import threading
 import time
 from dataclasses import dataclass
 
-from . import model, screens
+from . import __version__, model, screens
 from .config import Config
 from .textwidth import crop, pad, truncate, width
 
@@ -269,6 +269,9 @@ class App:
         if self.my_sty:
             head += "  ·  ⚠ screen 안에서 실행 중"
         self.put(0, 0, pad(head, W), self.color(6) | curses.A_BOLD)
+        ver = f"v{__version__} "
+        if width(head) + width(ver) + 2 <= W:
+            self.put(0, W - width(ver), ver, self.color(6) | curses.A_BOLD)
 
         self.tile_boxes = []
         if not self.refresher.loaded:
