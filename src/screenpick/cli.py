@@ -7,9 +7,10 @@ import locale
 import logging
 import os
 import shutil
+import signal
 import sys
 
-from . import __version__, config, model
+from . import __version__, config, instance, model
 from .textwidth import pad, truncate
 
 
@@ -91,9 +92,18 @@ def main(argv: list[str] | None = None) -> int:
     root.setLevel(cfg.log_level)
     root.addHandler(buffer)
 
+    notice = ""
+    if cfg.single_instance:
+        killed = instance.take_over()
+        if killed:
+            notice = f"이전에 켜 둔 screenpick 을 종료했습니다 (PID {', '.join(map(str, killed))})"
+            logging.getLogger(__name__).info(notice)
+    # 다른 screenpick 이 종료시킬 때 터미널을 원래대로 돌려놓고 끝나도록
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
+
     from . import tui  # curses 는 대화형 모드에서만 필요
     try:
-        exec_args, exec_env = tui.run(cfg)
+        exec_args, exec_env = tui.run(cfg, notice)
     except KeyboardInterrupt:
         exec_args, exec_env = None, None
     finally:

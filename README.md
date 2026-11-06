@@ -169,6 +169,7 @@ shell   12250.logs                       Attached   /var/log
 | `SCREENPICK_WORKERS` | `6` | 동시에 캡처할 세션 수 |
 | `SCREENPICK_ATTACHED_MODE` | `steal` | 이미 다른 곳에 붙어 있는 세션에 붙을 때: `steal`(`screen -d -r`, 기존 연결을 뗌) / `share`(`screen -x`, 같이 붙음) |
 | `SCREENPICK_RETURN_AFTER_DETACH` | `true` | 세션에서 떼어 내면 그리드로 돌아올지. `false` 면 screenpick 이 끝나고 screen 으로 바뀜 |
+| `SCREENPICK_SINGLE_INSTANCE` | `true` | 새로 켜면 같은 사용자의 이전 screenpick 을 종료. 잊고 남겨 둔 screenpick 이 계속 screen 을 조회하는 것을 막음. `false` 면 여러 개를 함께 띄울 수 있음 |
 | `SCREENPICK_SCREEN_BIN` | `screen` | screen 실행 파일 |
 | `SCREENPICK_CLAUDE_DIR` | `$CLAUDE_CONFIG_DIR` 또는 `~/.claude` | Claude Code 설정 디렉터리 |
 | `SCREENPICK_CODEX_DIR` | `$CODEX_HOME` 또는 `~/.codex` | Codex 설정 디렉터리 |
@@ -224,6 +225,7 @@ screenpick/
 │   ├── cli.py        진입점, 인자 처리, 로그 처리
 │   ├── config.py     환경변수 → Config
 │   ├── screens.py    screen -ls / -Q info 파싱, attach 명령 구성
+│   ├── instance.py   이전 screenpick 찾아 종료 (한 번에 하나만)
 │   ├── procinfo.py   /proc 스냅샷, 창의 셸·전경 프로세스·터미널 크기, claude/codex 판별
 │   ├── titles.py     Claude Code / Codex 세션 제목 조회
 │   ├── capture.py    화면 캡처 (pty + pyte, hardcopy 대체)

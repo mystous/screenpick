@@ -24,6 +24,7 @@ class Config:
     workers: int             # 동시에 캡처할 세션 수
     attached_mode: str       # 다른 곳에 붙어 있는 세션: steal(-d -r) | share(-x)
     return_after_detach: bool  # 세션에서 detach 하면 목록으로 돌아올지
+    single_instance: bool    # 새로 켜면 이전 screenpick 을 종료할지
     claude_dir: Path
     codex_dir: Path
     log_level: str
@@ -79,6 +80,7 @@ def load(env: Mapping[str, str] | None = None) -> Config:
         workers=_int(env, "WORKERS", 6),
         attached_mode=_choice(env, "ATTACHED_MODE", "steal", ("steal", "share")),
         return_after_detach=_bool(env, "RETURN_AFTER_DETACH", True),
+        single_instance=_bool(env, "SINGLE_INSTANCE", True),
         claude_dir=claude_dir.expanduser(),
         codex_dir=codex_dir.expanduser(),
         log_level=(env.get(PREFIX + "LOG_LEVEL") or "WARNING").upper(),

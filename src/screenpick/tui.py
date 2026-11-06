@@ -549,6 +549,11 @@ class App:
         return self.attach_request, self.attach_env
 
 
-def run(cfg: Config) -> tuple[list[str] | None, dict[str, str] | None]:
+def run(cfg: Config, notice: str = "") -> tuple[list[str] | None, dict[str, str] | None]:
     """앱을 실행하고, 끝날 때 exec 할 screen 명령과 환경(있다면)을 돌려준다."""
-    return curses.wrapper(lambda stdscr: App(stdscr, cfg).run())
+    def main(stdscr):
+        app = App(stdscr, cfg)
+        if notice:
+            app.flash(notice, 5.0)
+        return app.run()
+    return curses.wrapper(main)

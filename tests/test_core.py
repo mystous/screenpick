@@ -192,3 +192,35 @@ def test_attached_window_info_uses_most_recent_tty(monkeypatch):
     info = model.attached_window_info(procs, 1)
     assert (info.cols, info.rows, info.number) == (120, 40, 3)
     assert model.attached_window_info({}, 1) is None
+
+
+def test_is_screenpick():
+    from screenpick import instance
+    assert instance.is_screenpick(["screenpick"])
+    assert instance.is_screenpick(["/x/venv/bin/python", "/home/u/.local/bin/screenpick"])
+    assert instance.is_screenpick(["python3", "-m", "screenpick"])
+    assert not instance.is_screenpick(["screenpick", "--list"])
+    assert not instance.is_screenpick(["/bin/bash", "-c", "screenpick"])
+    assert not instance.is_screenpick(["vim", "screenpick.py"])
+    assert not instance.is_screenpick([])
+
+
+def test_find_others(tmp_path):
+    from screenpick import instance
+    uid = __import__("os").getuid()
+    for pid, argv in {10: ["screenpick"], 11: ["screenpick", "-l"], 12: ["bash"], 13: ["screenpick"]}.items():
+        d = tmp_path / str(pid)
+        d.mkdir()
+        (d / "cmdline").write_bytes(b"\0".join(a.encode() for a in argv) + b"\0")
+    (tmp_path / "self").mkdir()
+    assert instance.find_others(tmp_path, me=13, uid=uid) == [10]
+    assert instance.find_others(tmp_path, me=13, uid=uid + 1) == []
+
+
+def test_screen_children(tmp_path):
+    from screenpick import instance
+    for pid, comm, ppid in [(20, "screen", 10), (21, "bash", 10), (22, "screen", 99)]:
+        d = tmp_path / str(pid)
+        d.mkdir()
+        (d / "stat").write_text(f"{pid} ({comm}) S {ppid} {pid} {pid} 0 -1 0")
+    assert instance.screen_children(10, tmp_path) == [20]
