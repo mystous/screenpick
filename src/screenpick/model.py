@@ -37,13 +37,38 @@ def short_path(path: str, home: str | None = None) -> str:
     return path
 
 
+def attached_window_info(procs: dict[int, procinfo.Proc], screen_pid: int) -> screens.WindowInfo | None:
+    """screen 명령 없이 창 크기와 (추정한) 현재 창 번호를 구한다.
+
+    현재 창은 알 수 없으므로 가장 최근에 입력을 받은 창으로 본다.
+    """
+    best = None
+    for num, proc in procinfo.window_shells(procs, screen_pid).items():
+        tty = procinfo.tty_of(proc.pid)
+        size = procinfo.tty_size(tty) if tty else None
+        if size is None:
+            continue
+        key = procinfo.tty_activity(tty)
+        if best is None or key > best[0]:
+            best = (key, num, size, proc.exe_name)
+    if best is None:
+        return None
+    _, num, (cols, rows), title = best
+    return screens.WindowInfo(cols=cols, rows=rows, number=num, title=title)
+
+
 def describe(cfg: Config, session: screens.Session, procs: dict[int, procinfo.Proc]) -> SessionView:
     view = SessionView(session=session)
     if session.dead:
         view.kind, view.title = "unknown", "(죽은 세션 · screen -wipe 필요)"
         return view
 
-    info = screens.window_info(cfg.screen_bin, session.id)
+    # screen 4.x 는 -Q 조회 결과를 붙어 있는 화면의 메시지 줄에도 띄워서 입력을 방해한다.
+    # 그래서 붙어 있는 세션은 screen 에 묻지 않고 /proc 와 터미널 장치에서 읽는다.
+    if session.attached:
+        info = attached_window_info(procs, session.pid)
+    else:
+        info = screens.window_info(cfg.screen_bin, session.id)
     if info:
         view.cols, view.rows, view.window = info.cols, info.rows, info.number
         view.size_known = True

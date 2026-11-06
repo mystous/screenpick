@@ -178,3 +178,17 @@ def test_session_name_rules():
     assert screens.check_session_name("a/b")
     assert screens.new_session_args("screen", "work") == ["screen", "-S", "work"]
     assert screens.new_session_args("screen", "") == ["screen"]
+
+
+def test_attached_window_info_uses_most_recent_tty(monkeypatch):
+    from screenpick import model
+    procs = {1: _proc(1, 0, "screen", ["SCREEN"]), 10: _proc(10, 1, "bash", ["bash"]),
+             11: _proc(11, 1, "bash", ["-bash"])}
+    procs[1].children = [10, 11]
+    monkeypatch.setattr(procinfo, "read_environ_var", lambda pid, name: {10: "0", 11: "3"}[pid])
+    monkeypatch.setattr(procinfo, "tty_of", lambda pid: f"/dev/pts/{pid}")
+    monkeypatch.setattr(procinfo, "tty_size", lambda path: (120, 40) if path.endswith("11") else (80, 24))
+    monkeypatch.setattr(procinfo, "tty_activity", lambda path: (200.0, 0.0) if path.endswith("11") else (100.0, 0.0))
+    info = model.attached_window_info(procs, 1)
+    assert (info.cols, info.rows, info.number) == (120, 40, 3)
+    assert model.attached_window_info({}, 1) is None

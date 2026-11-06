@@ -185,6 +185,8 @@ SCREENPICK_TILE_WIDTH=45 SCREENPICK_REFRESH_SEC=0 screenpick
 ### 1. 세션과 프로그램 찾기
 
 1. `screen -ls` 로 세션 목록을, `screen -Q info` 로 각 세션의 창 크기와 현재 창 번호를 읽습니다.
+   - 단, 다른 곳에 붙어 있는(Attached) 세션에는 screen 명령을 보내지 않습니다. screen 4.x 는 `-Q` 조회 결과를 붙어 있는 화면의 메시지 줄에도 띄워서 입력을 방해하기 때문입니다.
+     대신 창 셸의 터미널 장치에서 크기를 읽고(`TIOCGWINSZ`), 가장 최근에 입력을 받은 창을 현재 창으로 봅니다.
 2. `/proc` 에서 screen 서버 프로세스의 자식 중 환경변수 `WINDOW` 가 현재 창 번호와 같은 셸을 찾습니다.
 3. 셸의 터미널 전경 프로세스 그룹(`tpgid`)으로 지금 화면을 차지한 프로그램을 알아냅니다.
 4. 그 프로그램과 자식 중에 `claude` 또는 `codex` 가 있으면 AI 세션으로 봅니다.
@@ -222,7 +224,7 @@ screenpick/
 │   ├── cli.py        진입점, 인자 처리, 로그 처리
 │   ├── config.py     환경변수 → Config
 │   ├── screens.py    screen -ls / -Q info 파싱, attach 명령 구성
-│   ├── procinfo.py   /proc 스냅샷, 창의 셸·전경 프로세스, claude/codex 판별
+│   ├── procinfo.py   /proc 스냅샷, 창의 셸·전경 프로세스·터미널 크기, claude/codex 판별
 │   ├── titles.py     Claude Code / Codex 세션 제목 조회
 │   ├── capture.py    화면 캡처 (pty + pyte, hardcopy 대체)
 │   ├── model.py      세션 → 표시용 SessionView
@@ -282,7 +284,7 @@ screenpick
 ## 알려진 제한
 
 - Linux 전용입니다 (`/proc` 사용).
-- 세션 하나에 창이 여러 개면 **현재 창**만 보여 줍니다.
+- 세션 하나에 창이 여러 개면 **현재 창**만 보여 줍니다. 붙어 있는 세션은 현재 창을 추정하므로 가끔 틀릴 수 있습니다.
 - 썸네일은 화면을 줄이는 게 아니라 왼쪽·아래쪽을 잘라서 보여 줍니다.
 - 캡처하는 짧은 순간 동안 세션에 display 가 하나 더 붙습니다. 이걸 피하려면 `SCREENPICK_CAPTURE=hardcopy` 나 `off` 를 쓰세요.
 - Claude Code / Codex 내부 파일 형식이 바뀌면 제목 찾기가 안 될 수 있습니다.

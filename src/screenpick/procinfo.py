@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import fcntl
 import os
+import struct
+import termios
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -106,6 +109,50 @@ def descendants(procs: dict[int, Proc], pid: int) -> list[Proc]:
         out.append(procs[cur])
         queue.extend(sorted(procs[cur].children))
     return out
+
+
+def window_shells(procs: dict[int, Proc], screen_pid: int) -> dict[int, Proc]:
+    """screen 서버의 자식 중 창 번호(WINDOW=n)를 아는 것들. {창 번호: 첫 프로세스}"""
+    kids = [procs[c] for c in sorted(procs[screen_pid].children)] if screen_pid in procs else []
+    out: dict[int, Proc] = {}
+    for k in kids:
+        num = read_environ_var(k.pid, "WINDOW")
+        if num is not None and num.isdigit():
+            out.setdefault(int(num), k)
+    return out
+
+
+def tty_of(pid: int) -> str | None:
+    """프로세스의 표준 입력이 연결된 터미널 장치 경로."""
+    try:
+        path = os.readlink(f"/proc/{pid}/fd/0")
+    except OSError:
+        return None
+    return path if path.startswith("/dev/pts/") or path.startswith("/dev/tty") else None
+
+
+def tty_size(path: str) -> tuple[int, int] | None:
+    """터미널 장치의 (cols, rows). screen 에 명령을 보내지 않고 창 크기를 알아낸다."""
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOCTTY | os.O_NONBLOCK)
+    except OSError:
+        return None
+    try:
+        rows, cols, _, _ = struct.unpack("HHHH", fcntl.ioctl(fd, termios.TIOCGWINSZ, b"\0" * 8))
+    except OSError:
+        return None
+    finally:
+        os.close(fd)
+    return (cols, rows) if cols and rows else None
+
+
+def tty_activity(path: str) -> tuple[float, float]:
+    """(마지막 입력 시각, 마지막 출력 시각). 커널이 몇 초 단위로만 갱신하니 대략적인 값."""
+    try:
+        st = os.stat(path)
+    except OSError:
+        return (0.0, 0.0)
+    return (st.st_atime, st.st_mtime)
 
 
 def window_shell(procs: dict[int, Proc], screen_pid: int, window: int) -> Proc | None:
