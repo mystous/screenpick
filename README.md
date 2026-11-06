@@ -11,22 +11,9 @@ GNU `screen` 세션들을 **작은 썸네일 그리드**로 한눈에 보고, �
 `screen -ls` 는 `12345.pts-0.myhost (Detached)` 같은 목록만 보여 줘서, 세션이 많아지면 어느 게 어느 작업인지 알기 어렵습니다.
 screenpick 은 각 세션의 **실제 화면**을 작게 보여 주고, **Claude Code / Codex 세션이면 대화 제목을**, 일반 셸이면 **현재 디렉터리**를 제목으로 붙여 줍니다.
 
-```
- screenpick  ·  세션 7개  ·  페이지 1/2  ·  갱신 20:31:05
-┏ 1  로그인 버그 수정 ━━━━━━━━━━━━━━━━━━━━━━━ claude ┓ ┌ 2  API 문서 정리 ──────────────────────────── codex ┐
-┃ claude · ~/work/webapp                             ┃ │ codex · ~/work/api-server                          │
-┃ ✻ Cogitated for 1m 12s                             ┃ │ › 엔드포인트 목록을 표로 정리해 줘                 │
-┃ ────────────────────────────────────────           ┃ │                                                    │
-┃ ❯                                                  ┃ │   gpt-5.5 default · ~/work/api-server              │
-┗ 12345.pts-0.myhost · Detached ━━━━━━━━━━━━━━━━━━━━━┛ └ 12301.api · Detached ──────────────────────────────┘
+![screenpick 화면](docs/screenshot.png)
 
-┌ 3  ~/work/webapp ─────────────────────────── run ┐   ┌ 4  /var/log ─────────────────────────────── shell ┐
-│ npm run dev                                      │   │ bash                                              │
-│ ▲ Next.js  - Local: http://localhost:3000        │   │                                                   │
-│ ✓ Ready in 1.2s                                  │   │ user@myhost:/var/log$                             │
-└ 12288.dev · Detached ────────────────────────────┘   └ 12250.logs · Attached ────────────────────────────┘
- ←↑↓→/hjkl 이동  Enter 붙기  1-9 바로 붙기  c 새 세션  n/p 페이지  r 새로고침  ? 도움말  q 종료
-```
+<sub>화면 예시는 가짜 세션으로 만든 것입니다 (`tools/screenshot.py`).</sub>
 
 ## 목차
 
@@ -235,6 +222,8 @@ screenpick/
 │   ├── textwidth.py  한글 등 전각 문자 폭 계산
 │   └── tui.py        curses 그리드, 페이징, 백그라운드 갱신
 ├── tests/            pytest 단위 테스트
+├── tools/screenshot.py  README 스크린샷 생성 (가짜 세션 사용)
+├── docs/screenshot.png  README 스크린샷
 ├── .github/workflows/test.yml   GitHub Actions (Python 3.10 ~ 3.13)
 ├── .env.example      설정 예시
 ├── pyproject.toml
@@ -266,6 +255,12 @@ uv venv && uv pip install -e '.[dev]' && .venv/bin/pytest
 screen -dmS demo-shell bash
 screen -dmS demo-top bash -c 'top'
 screenpick
+```
+
+README 의 스크린샷(`docs/screenshot.png`)은 실제 세션이 아니라 가짜 세션으로 그립니다. 화면을 바꿨다면 다시 만들어 주세요.
+
+```bash
+uv run --with pillow python tools/screenshot.py
 ```
 
 ## 기여하기
